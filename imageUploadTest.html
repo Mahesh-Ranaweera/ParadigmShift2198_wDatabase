@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <title>
+            IMG UPLOAD TEST
+        </title>
+        
+        <script src="http://code.jquery.com/jquery-latest.js"></script>
+        <script type="application/javascript">
+            function readURL(input) {
+                if (input.files && input.files[0]) {
+                    var reader = new FileReader();
+
+                    reader.onload = function (e) {
+                        $('#imgShow')
+                            .attr('src', e.target.result)
+                            .width(55)
+                            .height(55);
+                    };
+
+                    reader.readAsDataURL(input.files[0]);
+                }
+            }
+        </script>
+    </head>
+    
+    <body>
+        <form action="<?php echo $_SERVER['PHP_SELF']; ?>" method="post" enctype="multipart/form-data">
+            <input type="file" name="file_img" onchange="readURL(this);">
+            <img id="imgShow" src="#" alt="" />
+            <input type="submit" name="submit" value="submit">
+        </form>
+        
+        
+        
+        <?php
+            
+            function ImageType()
+            {
+                if (($_FILES["file_img"]["type"] == "image/gif")|| ($_FILES["file_img"]["type"] == "image/jpeg")|| 
+                    ($_FILES["file_img"]["type"] == "image/png")|| ($_FILES["file_img"]["type"] == "image/bmp" ))
+                {
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            
+            function ImageSize()
+            {
+                if ($_FILES["file_img"]["size"] < 2097152)
+                {
+                    return true;
+                }
+                
+                else
+                {
+                    return false;
+                }
+            }
+            
+            include 'php/error.php';
+            include_once 'php/dbconfig.php';
+            
+            if(isset($_POST['submit']) && !empty($_FILES['file_img']['name']))
+            {
+                $filetmp = $_FILES["file_img"]["tmp_name"];
+                $filename= $_FILES["file_img"]["name"];
+                $filetype= $_FILES["file_img"]["type"];
+                #$filesize= $_FILES["file_img"]["size"];
+
+                #rename uploaded file
+                $temp = explode(".", $_FILES["file_img"]["name"]);
+                $newfilename = "frc_".round(microtime(true)) . '.' . end($temp);
+                
+                #file uploading path
+                $filepath= "content/first/".$newfilename;
+                  
+                if(ImageSize())
+                {
+                    if(ImageType())  
+                    {
+                        if(move_uploaded_file($filetmp, $filepath))
+                        {
+                        echo $filename."<br>";
+                        echo $newfilename."<br>";
+                        echo $filepath."<br>";
+                        echo $filetype."<br>";
+
+                        #change the database
+                        $sql = "INSERT INTO `frc_img` (`img_id`,`img_name`,`img_path`,`img_type`) VALUES ('','$newfilename','$filepath','$filetype')";
+                        mysql_query($sql);
+
+                        header("location: imageUploadTest.html?success.$newfilename");
+                        echo "FILE UPLOAD SUCCESS";
+                        }
+
+                        else
+                        {
+                            echo "FILE UPLOAD ERROR";
+                            header("location: imageUploadTest.html?fail");
+                        }
+                    }
+                    else
+                    {
+                        echo "File is not an image";
+                    }
+                }
+                else
+                {
+                    echo "File too big";
+                }
+            }
+        ?>
+        <p>Uploaded Files</p><br>
+        <?php
+            include_once 'php/database.php';
+            #include_once 'php/delete.php';
+            
+            $sql = 'SELECT id,img_name,img_path,img_type FROM first_img';
+            $retval = mysqli_query($conn, $sql);
+
+            if(! $retval)
+            {
+                die(db_conn_error().mysqli_error());
+            }
+
+            while($row = mysqli_fetch_array($retval))
+            {
+               echo $row['id']."<br>"; 
+               echo  "<input type='text' placeholder='".$row['id']."'><br>";
+               echo "<img src='".$row['img_path']."' width='100px' height='60px'><br>";
+               echo "
+                    <form action='delete_not_tested.php' method='post'> 
+                    <input type='hidden' id='img_id' name='img_id' value='".$row['id']."'>
+                    <input type='text' placeholder='".$row['id']."'>
+                    <input type='text' placeholder='".$row['img_name']."'>
+                    <button type='submit' name='delete'>DELETE</button>
+                    </form><br>
+                    ";
+                    
+                echo "<form action=img_update method=post>
+                <input type=hidden id='img_id' value='".$row['id']."'>
+                <input type='file' name='file_img' id='file_img'>
+                <button type='submit' name='update'>UPDATE</button>
+                </form>";
+                
+                echo $row['img_path']."<br>";
+                echo '<a href="'.$row['img_path'].'">img_link</a>';
+            }
+        ?>
+        
+        
+        
+    </body>
+</html>
